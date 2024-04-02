@@ -9,9 +9,10 @@ import com.revrobotics.CANSparkLowLevel.MotorType;
 
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.FunctionalCommand;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Shooter extends SubsystemBase {
   private CANSparkFlex m_topMotor = new CANSparkFlex(8, MotorType.kBrushless);
@@ -30,14 +31,17 @@ public class Shooter extends SubsystemBase {
   }
   public Command run() {
     Timer topBottomDelay = new Timer();
+    AtomicBoolean alreadyApplied = new AtomicBoolean(false);
     return new FunctionalCommand(
     () -> {
       m_topMotor.set(topSpeed);
       topBottomDelay.restart();
+      alreadyApplied.set(false);
     },
      () -> {
-        if (topBottomDelay.hasElapsed(.2)) {
+        if (topBottomDelay.hasElapsed(.2) && !alreadyApplied.get()) {
           m_bottomMotor.set(bottomSpeed);
+          alreadyApplied.set(true);
         }
      },
      b -> {},

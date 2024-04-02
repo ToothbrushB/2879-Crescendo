@@ -4,11 +4,10 @@
 
 package frc.robot;
 
+import com.pathplanner.lib.auto.AutoBuilder;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import frc.robot.Constants.OperatorConstants;
-import frc.robot.commands.Autos;
-import frc.robot.commands.ExampleCommand;
 import frc.robot.subsystems.Climber;
-import frc.robot.subsystems.ExampleSubsystem;
 import frc.robot.subsystems.MecanumDriveSubsystem;
 import frc.robot.subsystems.Shooter;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -16,6 +15,8 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+
+import static frc.robot.Constants.SB_TAB;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -28,6 +29,7 @@ public class RobotContainer {
   private final MecanumDriveSubsystem m_DriveSubsystem = new MecanumDriveSubsystem();
   private final Shooter m_shooter = new Shooter();
   private final Climber m_Climber = new Climber();
+  private final SendableChooser<Command> autoChooser = AutoBuilder.buildAutoChooser();
   // Replace with CommandPS4Controller or CommandJoystick if needed
   private final CommandXboxController m_driverController =
       new CommandXboxController(OperatorConstants.kDriverControllerPort);
@@ -37,6 +39,7 @@ public class RobotContainer {
     DriverStation.silenceJoystickConnectionWarning(true);
     // Configure the trigger bindings
     configureBindings();
+    SB_TAB.add("Auto Chooser", autoChooser);
   }
 
   /**
@@ -63,6 +66,6 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     // An example command will be run in autonomous
-    return Commands.none();
+    return autoChooser.getSelected();
   }
 }
