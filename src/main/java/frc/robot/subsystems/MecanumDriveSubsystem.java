@@ -6,6 +6,8 @@ package frc.robot.subsystems;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
+import com.ctre.phoenix6.configs.FeedbackConfigs;
+import com.ctre.phoenix6.configs.MotorOutputConfigs;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.kauailabs.navx.frc.AHRS;
@@ -39,26 +41,26 @@ import java.util.function.Supplier;
 import static edu.wpi.first.units.Units.*;
 
 public class MecanumDriveSubsystem extends SubsystemBase {
-    private final double WHEEL_CIRCUMFERENCE = Units.inchesToMeters(2)*2*Math.PI;
     private final MecanumDriveWheelPositions wheelPositions = new MecanumDriveWheelPositions();
     private final MecanumDriveWheelSpeeds wheelSpeeds = new MecanumDriveWheelSpeeds();
-    private final Measure<Velocity<Distance>> kSpeedAt12VoltsMps = MetersPerSecond.of(1);
+    private final Measure<Velocity<Distance>> kSpeedAt12VoltsMps = MetersPerSecond.of(4); // TODO: this is a guess, we can figure it out later lol
 
-    private final MecanumDriveKinematics kinematics = new MecanumDriveKinematics( // TODO DO THIS
-        new Translation2d(),
-        new Translation2d(),
-        new Translation2d(),
-        new Translation2d()
+    // THE ORDER IS: FL, FR, RL, RR
+    private final MecanumDriveKinematics kinematics = new MecanumDriveKinematics( // TODO DO THIS, X first, then Y. Both are in meters. Use this to help you determine signs. https://docs.wpilib.org/en/stable/docs/software/basic-programming/coordinate-system.html
+        new Translation2d(1,1),
+        new Translation2d(1,1),
+        new Translation2d(1,1),
+        new Translation2d(1,1)
     );
 
     private final double kDriveRadius;
 
 
-    // TODO: find inverted and wheel radius
-    private final Wheel m_frontLeft = new Wheel(new Wheel.WheelConstants(2, Inches.of(1),false, kSpeedAt12VoltsMps));
-    private final Wheel m_frontRight = new Wheel(new Wheel.WheelConstants(3,Inches.of(1),true, kSpeedAt12VoltsMps));
-    private final Wheel m_rearLeft = new Wheel(new Wheel.WheelConstants(4,Inches.of(1),false, kSpeedAt12VoltsMps));
-    private final Wheel m_rearRight = new Wheel(new Wheel.WheelConstants(5,Inches.of(1),true, kSpeedAt12VoltsMps));
+    // TODO: find inverted (it should either be left or right side if you did it right i believe) and wheel radius and gear ratio. DOUBLE CHECK WHEEL IDS. Gear ratio is sensor to mechanism (how many rotations of motor lead to one rotation of wheel?)
+    private final Wheel m_frontLeft = new Wheel(new Wheel.WheelConstants(2, Inches.of(2),false, kSpeedAt12VoltsMps, 1));
+    private final Wheel m_frontRight = new Wheel(new Wheel.WheelConstants(3,Inches.of(2),true, kSpeedAt12VoltsMps, 1));
+    private final Wheel m_rearLeft = new Wheel(new Wheel.WheelConstants(4,Inches.of(2),false, kSpeedAt12VoltsMps, 1));
+    private final Wheel m_rearRight = new Wheel(new Wheel.WheelConstants(5,Inches.of(2),true, kSpeedAt12VoltsMps, 1));
 
     private final AHRS m_gyro = new AHRS();
     private final MecanumDrivePoseEstimator m_odometry;
@@ -176,6 +178,7 @@ public class MecanumDriveSubsystem extends SubsystemBase {
 
             m_motor = new TalonFX(constants.id);
             m_motor.setInverted(constants.inverted);
+            m_motor.getConfigurator().apply(new FeedbackConfigs().withSensorToMechanismRatio(constants.gearRatio));
 
             circumference = constants.radius.in(Meters) * 2 * Math.PI;
             m_position = m_motor.getPosition();
@@ -199,6 +202,6 @@ public class MecanumDriveSubsystem extends SubsystemBase {
         }
 
 
-        private record WheelConstants(int id, Measure<Distance> radius, boolean inverted, Measure<Velocity<Distance>> speedAt12V) {}
+        private record WheelConstants(int id, Measure<Distance> radius, boolean inverted, Measure<Velocity<Distance>> speedAt12V, double gearRatio) {}
     }
 }
