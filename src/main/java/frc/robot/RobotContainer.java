@@ -56,7 +56,12 @@ public class RobotContainer {
     m_driverController.leftTrigger().whileTrue(m_shooter.run());
 
     m_driverController.a().whileTrue(m_Climber.toggle());
-    m_DriveSubsystem.setDefaultCommand(m_DriveSubsystem.joystickDrive(m_driverController::getLeftX, m_driverController::getLeftY, m_driverController::getRightX));
+    m_driverController.povDown().whileTrue(m_Climber.dutyCycleDown());
+    m_driverController.start().whileTrue(m_DriveSubsystem.runOnce(m_DriveSubsystem::seedFieldRelative));
+    m_DriveSubsystem.setDefaultCommand(m_DriveSubsystem.joystickDrive(
+        () -> -m_driverController.getLeftY(),
+        () -> -m_driverController.getLeftX(),
+        () -> -m_driverController.getRightX()));
   }
 
   /**

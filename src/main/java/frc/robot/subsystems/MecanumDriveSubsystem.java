@@ -8,8 +8,11 @@ import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.FeedbackConfigs;
 import com.ctre.phoenix6.configs.MotorOutputConfigs;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.InvertedValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.kauailabs.navx.frc.AHRS;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.util.HolonomicPathFollowerConfig;
@@ -18,6 +21,7 @@ import com.pathplanner.lib.util.ReplanningConfig;
 import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.estimator.MecanumDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.MecanumDriveKinematics;
@@ -39,6 +43,7 @@ import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 
 import static edu.wpi.first.units.Units.*;
+import static frc.robot.Constants.SB_TAB;
 
 public class MecanumDriveSubsystem extends SubsystemBase {
     private final MecanumDriveWheelPositions wheelPositions = new MecanumDriveWheelPositions();
@@ -47,26 +52,28 @@ public class MecanumDriveSubsystem extends SubsystemBase {
 
     // THE ORDER IS: FL, FR, RL, RR
     private final MecanumDriveKinematics kinematics = new MecanumDriveKinematics( // TODO DO THIS, X first, then Y. Both are in meters. Use this to help you determine signs. https://docs.wpilib.org/en/stable/docs/software/basic-programming/coordinate-system.html
-        new Translation2d(1,1),
-        new Translation2d(1,1),
-        new Translation2d(1,1),
-        new Translation2d(1,1)
+        new Translation2d(.24,.555/2),
+        new Translation2d(.24,-.555/2),
+        new Translation2d(-.24,.555/2),
+        new Translation2d(-.24,-.555/2)
     );
 
     private final double kDriveRadius;
 
 
     // TODO: find inverted (it should either be left or right side if you did it right i believe) and wheel radius and gear ratio. DOUBLE CHECK WHEEL IDS. Gear ratio is sensor to mechanism (how many rotations of motor lead to one rotation of wheel?)
-    private final Wheel m_frontLeft = new Wheel(new Wheel.WheelConstants(2, Inches.of(2),false, kSpeedAt12VoltsMps, 1));
-    private final Wheel m_frontRight = new Wheel(new Wheel.WheelConstants(3,Inches.of(2),true, kSpeedAt12VoltsMps, 1));
-    private final Wheel m_rearLeft = new Wheel(new Wheel.WheelConstants(4,Inches.of(2),false, kSpeedAt12VoltsMps, 1));
-    private final Wheel m_rearRight = new Wheel(new Wheel.WheelConstants(5,Inches.of(2),true, kSpeedAt12VoltsMps, 1));
+    private final Wheel m_frontLeft = new Wheel(new Wheel.WheelConstants(4, Inches.of(3),InvertedValue.Clockwise_Positive, kSpeedAt12VoltsMps, 10.71));
+    private final Wheel m_frontRight = new Wheel(new Wheel.WheelConstants(3,Inches.of(3),InvertedValue.CounterClockwise_Positive, kSpeedAt12VoltsMps, 10.71));
+    private final Wheel m_rearLeft = new Wheel(new Wheel.WheelConstants(2,Inches.of(3),InvertedValue.Clockwise_Positive, kSpeedAt12VoltsMps, 10.71));
+    private final Wheel m_rearRight = new Wheel(new Wheel.WheelConstants(5,Inches.of(3),InvertedValue.CounterClockwise_Positive, kSpeedAt12VoltsMps, 10.71));
 
     private final AHRS m_gyro = new AHRS();
     private final MecanumDrivePoseEstimator m_odometry;
 
     public MecanumDriveSubsystem() {
-        Constants.SB_TAB.add(m_gyro);
+        SB_TAB.add(m_gyro);
+        m_gyro.reset();
+        m_gyro.setAngleAdjustment(0);
         m_odometry = new MecanumDrivePoseEstimator(kinematics, m_gyro.getRotation2d(), new MecanumDriveWheelPositions(0,0,0,0), new Pose2d());
         kDriveRadius = Math.max(kinematics.getFrontLeft().getNorm(), Math.max(kinematics.getFrontRight().getNorm(), Math.max(kinematics.getRearLeft().getNorm(), kinematics.getRearRight().getNorm())));
         AutoBuilder.configureHolonomic(
@@ -84,6 +91,8 @@ public class MecanumDriveSubsystem extends SubsystemBase {
                 return alliance.filter(value -> value == DriverStation.Alliance.Red).isPresent();
             }, // Change this if the path needs to be flipped on red vs blue
             this); // Subsystem for requirements
+        SB_TAB.add(this);
+        SB_TAB.addDoubleArray("CTRE pose", () -> new double[]{m_odometry.getEstimatedPosition().getX(), m_odometry.getEstimatedPosition().getY(), m_odometry.getEstimatedPosition().getRotation().getRadians()});
     }
 
     public MecanumDriveWheelSpeeds getWheelSpeeds() {
@@ -116,9 +125,11 @@ public class MecanumDriveSubsystem extends SubsystemBase {
     public void seedFieldRelative(Pose2d location) {
         m_odometry.resetPosition(m_gyro.getRotation2d(), wheelPositions, location);
     }
+
     public Command velocityDrive(Supplier<ChassisSpeeds> speedsSupplier) {
         return runEnd(() -> {
             MecanumDriveWheelSpeeds s = kinematics.toWheelSpeeds(speedsSupplier.get());
+//            System.out.println("setting"+s);
             m_frontLeft.setMps(s.frontLeftMetersPerSecond);
             m_frontRight.setMps(s.frontRightMetersPerSecond);
             m_rearLeft.setMps(s.rearLeftMetersPerSecond);
@@ -137,12 +148,15 @@ public class MecanumDriveSubsystem extends SubsystemBase {
     }
 
     public Command joystickDrive(DoubleSupplier x, DoubleSupplier y, DoubleSupplier rot) {
-        ChassisSpeeds s = new ChassisSpeeds();
         return velocityDrive(() -> {
-            s.vxMetersPerSecond = x.getAsDouble();
-            s.vyMetersPerSecond = y.getAsDouble();
-            s.omegaRadiansPerSecond = rot.getAsDouble();
-            return s;
+            double vx = x.getAsDouble() * kSpeedAt12VoltsMps.in(MetersPerSecond);
+            if (Math.abs(x.getAsDouble()) < 0.05) vx = 0;
+            double vy = y.getAsDouble() * kSpeedAt12VoltsMps.in(MetersPerSecond);
+            if (Math.abs(y.getAsDouble()) < 0.05) vy = 0;
+            double vr = rot.getAsDouble() * kSpeedAt12VoltsMps.in(MetersPerSecond)/kDriveRadius;
+            if (Math.abs(rot.getAsDouble()) < 0.05) vr = 0;
+            ChassisSpeeds cs = ChassisSpeeds.fromFieldRelativeSpeeds(vx, vy, vr, m_odometry.getEstimatedPosition().getRotation());
+            return cs;
         });
     }
 
@@ -164,6 +178,12 @@ public class MecanumDriveSubsystem extends SubsystemBase {
         // This method will be called once per scheduler run during simulation
     }
 
+    public void seedFieldRelative() {
+        System.out.println("SEEDING");
+        m_odometry.resetPosition(m_gyro.getRotation2d(), getWheelPositions(), new Pose2d(m_odometry.getEstimatedPosition().getTranslation(), new Rotation2d(0)));
+
+    }
+
     private class Wheel {
         private final TalonFX m_motor;
         private final StatusSignal<Double> m_position;
@@ -177,9 +197,11 @@ public class MecanumDriveSubsystem extends SubsystemBase {
             speedAt12V = constants.speedAt12V.in(Meters.per(Second));
 
             m_motor = new TalonFX(constants.id);
-            m_motor.setInverted(constants.inverted);
-            m_motor.getConfigurator().apply(new FeedbackConfigs().withSensorToMechanismRatio(constants.gearRatio));
-
+            m_motor.getConfigurator().apply(new TalonFXConfiguration()
+                .withFeedback(new FeedbackConfigs()
+                    .withSensorToMechanismRatio(constants.gearRatio)
+                ).withMotorOutput(new MotorOutputConfigs().withNeutralMode(NeutralModeValue.Brake).withInverted(constants.inverted))
+            );
             circumference = constants.radius.in(Meters) * 2 * Math.PI;
             m_position = m_motor.getPosition();
             m_velocity = m_motor.getVelocity();
@@ -198,10 +220,10 @@ public class MecanumDriveSubsystem extends SubsystemBase {
 
         public void setMps(double s) {
             volts = s / speedAt12V * 12;
-            m_voltageControl.withOutput(volts);
+            m_motor.setControl(m_voltageControl.withOutput(volts));
         }
 
 
-        private record WheelConstants(int id, Measure<Distance> radius, boolean inverted, Measure<Velocity<Distance>> speedAt12V, double gearRatio) {}
+        private record WheelConstants(int id, Measure<Distance> radius, InvertedValue inverted, Measure<Velocity<Distance>> speedAt12V, double gearRatio) {}
     }
 }

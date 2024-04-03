@@ -7,21 +7,23 @@ package frc.robot.subsystems;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.SparkLimitSwitch;
-import com.revrobotics.SparkMaxPIDController;
+//import com.revrobotics.SparkMaxPIDController;
 import com.revrobotics.SparkPIDController;
 import com.revrobotics.CANSparkBase.ControlType;
 import com.revrobotics.CANSparkBase.SoftLimitDirection;
 import com.revrobotics.CANSparkLowLevel.MotorType;
 import com.revrobotics.SparkLimitSwitch.Type;
 
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.Commands;
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.*;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static frc.robot.Constants.SB_TAB;
+
 public class Climber extends SubsystemBase {
-  private final CANSparkMax m_left = new CANSparkMax(6, MotorType.kBrushless);
-  private final CANSparkMax m_right = new CANSparkMax(9, MotorType.kBrushless); // TODO actually id this thing
+  private final CANSparkMax m_right = new CANSparkMax(9, MotorType.kBrushless);
+  private final CANSparkMax m_left = new CANSparkMax(6, MotorType.kBrushless); // TODO actually id this thing
   private final SparkLimitSwitch m_leftSwitch;
   private final SparkLimitSwitch m_rightSwitch;
   private final RelativeEncoder m_leftEncoder;
@@ -30,13 +32,13 @@ public class Climber extends SubsystemBase {
   private final SparkPIDController m_rightPid;
 
   private boolean isUp;
-  private final double UP_POSITION = 9;
-  private final double DOWN_POSITION = 0;
+  private final double UP_POSITION = 50;
+  private final double DOWN_POSITION = 1;
 
   /** Creates a new Climber. */
   public Climber() {
-    m_leftSwitch = m_left.getForwardLimitSwitch(SparkLimitSwitch.Type.kNormallyClosed); // TODO figure this out (open/closed, forward/reverse)
-    m_rightSwitch = m_left.getReverseLimitSwitch(SparkLimitSwitch.Type.kNormallyClosed); 
+    m_rightSwitch = m_right.getForwardLimitSwitch(Type.kNormallyOpen); // TODO figure this out (open/closed, forward/reverse)
+    m_leftSwitch = m_right.getReverseLimitSwitch(Type.kNormallyOpen);
     m_leftEncoder = m_left.getEncoder();
     m_rightEncoder = m_right.getEncoder();
     m_leftPid = m_left.getPIDController();
@@ -44,34 +46,35 @@ public class Climber extends SubsystemBase {
 
     m_leftSwitch.enableLimitSwitch(false);
     m_rightSwitch.enableLimitSwitch(false);
-    
+
     m_left.setInverted(false);
     m_right.setInverted(false);
-    m_left.setSoftLimit(SoftLimitDirection.kForward, 10); // TODO figure this out
-    m_right.setSoftLimit(SoftLimitDirection.kForward, 10); // TODO figure this out
+    m_left.setSoftLimit(SoftLimitDirection.kReverse, 0); // TODO figure this out
+    m_right.setSoftLimit(SoftLimitDirection.kReverse, 0); // TODO figure this out
 
-
+//
     m_leftPid.setFeedbackDevice(m_leftEncoder);
     m_rightPid.setFeedbackDevice(m_rightEncoder);
-
-    m_leftPid.setP(0); // TODO tune PID
-    m_rightPid.setP(0);
+//
+    m_leftPid.setP(1); // TODO tune PID
+    m_rightPid.setP(1);
 
 
     m_left.burnFlash();
     m_right.burnFlash();
 
     new Trigger(m_leftSwitch::isPressed)
-      .debounce(.2) // TODO figure out debounce
-      .onTrue(
-        runOnce(() -> m_leftEncoder.setPosition(0))
+      .whileTrue(
+        runOnce(() -> {m_leftEncoder.setPosition(0);m_left.set(0);})
       );
 
     new Trigger(m_rightSwitch::isPressed)
-      .debounce(.2)
-      .onTrue(
-        runOnce(() -> m_rightEncoder.setPosition(0))
+      .whileTrue(
+        runOnce(() -> {m_rightEncoder.setPosition(0);m_left.set(0);})
     );
+    SB_TAB.addDouble("right climber", m_rightEncoder::getPosition);
+    SB_TAB.addDouble("left climber", m_leftEncoder::getPosition);
+
   }
 
   public Command toggle() {
@@ -91,15 +94,29 @@ public class Climber extends SubsystemBase {
   
   public Command down() {
     return runOnce(() -> {
-      m_leftPid.setReference(0, ControlType.kPosition);
-      m_rightPid.setReference(0, ControlType.kPosition); 
+      m_leftPid.setReference(DOWN_POSITION, ControlType.kPosition);
+      m_rightPid.setReference(DOWN_POSITION, ControlType.kPosition);
       isUp = false;
     });
   }
 
+  public Command dutyCycleDown() {
+//    AtomicBoolean isDone = new AtomicBoolean(false);
+//    return new FunctionalCommand(
+//        () -> {m_left.set(-.2); m_right.set(-.2);},
+//        () -> {
+//          if (m_rightSwitch.isPressed() || m_leftSwitch.isPressed()) {
+//            isDone.set(true);
+//            m_left.set(0); m_right.set(0);
+//          }
+//        },
+//        b -> {m_left.set(0); m_right.set(0);},
+//        isDone::get
+//    );
+    return new StartEndCommand(() -> {m_left.set(-.2); m_right.set(-.2);}, () -> {m_left.set(0); m_right.set(0);});
+  }
   @Override
   public void periodic() {
-    
     // This method will be called once per scheduler run
   }
 }
