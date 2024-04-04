@@ -150,11 +150,11 @@ public class MecanumDriveSubsystem extends SubsystemBase {
     public Command joystickDrive(DoubleSupplier x, DoubleSupplier y, DoubleSupplier rot) {
         return velocityDrive(() -> {
             double vx = x.getAsDouble() * kSpeedAt12VoltsMps.in(MetersPerSecond);
-            if (Math.abs(x.getAsDouble()) < 0.05) vx = 0;
+            if (Math.abs(x.getAsDouble()) < 0.1) vx = 0;
             double vy = y.getAsDouble() * kSpeedAt12VoltsMps.in(MetersPerSecond);
-            if (Math.abs(y.getAsDouble()) < 0.05) vy = 0;
+            if (Math.abs(y.getAsDouble()) < 0.1) vy = 0;
             double vr = rot.getAsDouble() * kSpeedAt12VoltsMps.in(MetersPerSecond)/kDriveRadius;
-            if (Math.abs(rot.getAsDouble()) < 0.05) vr = 0;
+            if (Math.abs(rot.getAsDouble()) < 0.1) vr = 0;
             ChassisSpeeds cs = ChassisSpeeds.fromFieldRelativeSpeeds(vx, vy, vr, m_odometry.getEstimatedPosition().getRotation());
             return cs;
         });
