@@ -19,6 +19,7 @@ import com.pathplanner.lib.util.HolonomicPathFollowerConfig;
 import com.pathplanner.lib.util.PIDConstants;
 import com.pathplanner.lib.util.ReplanningConfig;
 import edu.wpi.first.math.Matrix;
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.estimator.MecanumDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -29,16 +30,15 @@ import edu.wpi.first.math.kinematics.MecanumDriveWheelPositions;
 import edu.wpi.first.math.kinematics.MecanumDriveWheelSpeeds;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
-import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.Distance;
 import edu.wpi.first.units.Measure;
 import edu.wpi.first.units.Velocity;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.Constants;
 
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 
@@ -51,7 +51,7 @@ public class MecanumDriveSubsystem extends SubsystemBase {
     private final Measure<Velocity<Distance>> kSpeedAt12VoltsMps = MetersPerSecond.of(4); // TODO: this is a guess, we can figure it out later lol
 
     // THE ORDER IS: FL, FR, RL, RR
-    private final MecanumDriveKinematics kinematics = new MecanumDriveKinematics( // TODO DO THIS, X first, then Y. Both are in meters. Use this to help you determine signs. https://docs.wpilib.org/en/stable/docs/software/basic-programming/coordinate-system.html
+    private final MecanumDriveKinematics kinematics = new MecanumDriveKinematics(
         new Translation2d(.24,.555/2),
         new Translation2d(.24,-.555/2),
         new Translation2d(-.24,.555/2),
@@ -148,6 +148,9 @@ public class MecanumDriveSubsystem extends SubsystemBase {
     }
 
     public Command joystickDrive(DoubleSupplier x, DoubleSupplier y, DoubleSupplier rot) {
+        AtomicBoolean holdHeadingApplied = new AtomicBoolean(false);
+        PIDController holdHeadingController = new PIDController(3*Math.PI,0,0);
+        holdHeadingController.enableContinuousInput(-Math.PI, Math.PI);
         return velocityDrive(() -> {
             double vx = x.getAsDouble() * kSpeedAt12VoltsMps.in(MetersPerSecond);
             if (Math.abs(x.getAsDouble()) < 0.1) vx = 0;
@@ -155,6 +158,19 @@ public class MecanumDriveSubsystem extends SubsystemBase {
             if (Math.abs(y.getAsDouble()) < 0.1) vy = 0;
             double vr = rot.getAsDouble() * kSpeedAt12VoltsMps.in(MetersPerSecond)/kDriveRadius;
             if (Math.abs(rot.getAsDouble()) < 0.1) vr = 0;
+
+            if (Math.abs(vr) < 1E-6) { // zero check
+                if (!holdHeadingApplied.get()) {
+                    // set the setpoint
+                    holdHeadingController.setSetpoint(m_gyro.getRotation2d().plus(new Rotation2d()).getRadians());
+                    holdHeadingApplied.set(true);
+                }
+                // apply the PID
+                vr = holdHeadingController.calculate(m_gyro.getRotation2d().getRadians());
+            } else {
+                holdHeadingApplied.set(false);
+            }
+
             ChassisSpeeds cs = ChassisSpeeds.fromFieldRelativeSpeeds(vx, vy, vr, m_odometry.getEstimatedPosition().getRotation());
             return cs;
         });
@@ -184,7 +200,7 @@ public class MecanumDriveSubsystem extends SubsystemBase {
 
     }
 
-    private class Wheel {
+    private static class Wheel {
         private final TalonFX m_motor;
         private final StatusSignal<Double> m_position;
         private final StatusSignal<Double> m_velocity;
