@@ -5,6 +5,9 @@
 package frc.robot;
 
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
+import com.pathplanner.lib.commands.PathPlannerAuto;
+
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.Climber;
@@ -39,6 +42,7 @@ public class RobotContainer {
     DriverStation.silenceJoystickConnectionWarning(true);
     // Configure the trigger bindings
     configureBindings();
+    NamedCommands.registerCommand("shoot", m_shooter.run());
     SB_TAB.add("Auto Chooser", autoChooser);
   }
 
@@ -57,7 +61,7 @@ public class RobotContainer {
 
     m_driverController.a().whileTrue(m_Climber.toggle());
     m_driverController.povDown().whileTrue(m_Climber.dutyCycleDown());
-    m_driverController.start().whileTrue(m_DriveSubsystem.runOnce(m_DriveSubsystem::seedFieldRelative));
+    m_driverController.start().whileTrue(m_DriveSubsystem.runOnce(m_DriveSubsystem::seedFieldRelative).ignoringDisable(true));
     m_DriveSubsystem.setDefaultCommand(m_DriveSubsystem.joystickDrive(
         () -> -m_driverController.getLeftY(),
         () -> -m_driverController.getLeftX(),

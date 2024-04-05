@@ -48,7 +48,7 @@ import static frc.robot.Constants.SB_TAB;
 public class MecanumDriveSubsystem extends SubsystemBase {
     private final MecanumDriveWheelPositions wheelPositions = new MecanumDriveWheelPositions();
     private final MecanumDriveWheelSpeeds wheelSpeeds = new MecanumDriveWheelSpeeds();
-    private final Measure<Velocity<Distance>> kSpeedAt12VoltsMps = MetersPerSecond.of(4); // TODO: this is a guess, we can figure it out later lol
+    private final Measure<Velocity<Distance>> kSpeedAt12VoltsMps = MetersPerSecond.of(7); // TODO: this is a guess, we can figure it out later lol
 
     // THE ORDER IS: FL, FR, RL, RR
     private final MecanumDriveKinematics kinematics = new MecanumDriveKinematics(
@@ -149,7 +149,7 @@ public class MecanumDriveSubsystem extends SubsystemBase {
 
     public Command joystickDrive(DoubleSupplier x, DoubleSupplier y, DoubleSupplier rot) {
         AtomicBoolean holdHeadingApplied = new AtomicBoolean(false);
-        PIDController holdHeadingController = new PIDController(3*Math.PI,0,0);
+        PIDController holdHeadingController = new PIDController(1,0,0);
         holdHeadingController.enableContinuousInput(-Math.PI, Math.PI);
         return velocityDrive(() -> {
             double vx = x.getAsDouble() * kSpeedAt12VoltsMps.in(MetersPerSecond);
@@ -166,7 +166,7 @@ public class MecanumDriveSubsystem extends SubsystemBase {
                     holdHeadingApplied.set(true);
                 }
                 // apply the PID
-                vr = holdHeadingController.calculate(m_gyro.getRotation2d().getRadians());
+                vr = -holdHeadingController.calculate(m_gyro.getRotation2d().getRadians());
             } else {
                 holdHeadingApplied.set(false);
             }

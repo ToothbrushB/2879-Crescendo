@@ -10,10 +10,13 @@ import com.revrobotics.SparkLimitSwitch;
 //import com.revrobotics.SparkMaxPIDController;
 import com.revrobotics.SparkPIDController;
 import com.revrobotics.CANSparkBase.ControlType;
+import com.revrobotics.CANSparkBase.IdleMode;
 import com.revrobotics.CANSparkBase.SoftLimitDirection;
 import com.revrobotics.CANSparkLowLevel.MotorType;
 import com.revrobotics.SparkLimitSwitch.Type;
 
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.*;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 
@@ -51,6 +54,8 @@ public class Climber extends SubsystemBase {
     m_right.setInverted(false);
     m_left.setSoftLimit(SoftLimitDirection.kReverse, 0); // TODO figure this out
     m_right.setSoftLimit(SoftLimitDirection.kReverse, 0); // TODO figure this out
+    m_left.setIdleMode(IdleMode.kBrake);
+    m_right.setIdleMode(IdleMode.kBrake);
 
 //
     m_leftPid.setFeedbackDevice(m_leftEncoder);
@@ -118,5 +123,7 @@ public class Climber extends SubsystemBase {
   @Override
   public void periodic() {
     // This method will be called once per scheduler run
+    SmartDashboard.putNumber("left encoder", m_leftEncoder.getPosition());
+    SmartDashboard.putNumber("right encoder", m_rightEncoder.getPosition());
   }
 }
