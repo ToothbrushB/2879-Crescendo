@@ -63,8 +63,8 @@ public class RobotContainer {
     m_driverController.povDown().whileTrue(m_Climber.dutyCycleDown());
     m_driverController.start().whileTrue(m_DriveSubsystem.runOnce(m_DriveSubsystem::seedFieldRelative).ignoringDisable(true));
     m_DriveSubsystem.setDefaultCommand(m_DriveSubsystem.joystickDrive(
-        () -> -m_driverController.getLeftY(),
         () -> -m_driverController.getLeftX(),
+        () -> -m_driverController.getLeftY(),
         () -> m_driverController.getRightX()));
   }
 

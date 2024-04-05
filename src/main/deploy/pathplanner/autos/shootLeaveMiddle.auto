@@ -2,10 +2,10 @@
   "version": 1.0,
   "startingPose": {
     "position": {
-      "x": 1.3803113320512361,
-      "y": 5.541275082550166
+      "x": 1.29,
+      "y": 5.533020654004271
     },
-    "rotation": 0
+    "rotation": 178.89535253747198
   },
   "command": {
     "type": "sequential",
@@ -15,6 +15,18 @@
           "type": "named",
           "data": {
             "name": "shoot"
+          }
+        },
+        {
+          "type": "wait",
+          "data": {
+            "waitTime": 8.0
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "leaveMiddle"
           }
         }
       ]

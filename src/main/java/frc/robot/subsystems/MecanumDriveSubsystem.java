@@ -61,7 +61,7 @@ public class MecanumDriveSubsystem extends SubsystemBase {
     private final double kDriveRadius;
 
 
-    // TODO: find inverted (it should either be left or right side if you did it right i believe) and wheel radius and gear ratio. DOUBLE CHECK WHEEL IDS. Gear ratio is sensor to mechanism (how many rotations of motor lead to one rotation of wheel?)
+    // TODO: MUST DO TOMRROROWOW find inverted (it should either be left or right side if you did it right i believe) and wheel radius and gear ratio. DOUBLE CHECK WHEEL IDS. Gear ratio is sensor to mechanism (how many rotations of motor lead to one rotation of wheel?)
     private final Wheel m_frontLeft = new Wheel(new Wheel.WheelConstants(4, Inches.of(3),InvertedValue.Clockwise_Positive, kSpeedAt12VoltsMps, 10.71));
     private final Wheel m_frontRight = new Wheel(new Wheel.WheelConstants(3,Inches.of(3),InvertedValue.CounterClockwise_Positive, kSpeedAt12VoltsMps, 10.71));
     private final Wheel m_rearLeft = new Wheel(new Wheel.WheelConstants(2,Inches.of(3),InvertedValue.Clockwise_Positive, kSpeedAt12VoltsMps, 10.71));
@@ -80,9 +80,9 @@ public class MecanumDriveSubsystem extends SubsystemBase {
             m_odometry::getEstimatedPosition,
             this::seedFieldRelative,
             this::getChassisSpeeds,
-            this::velocityDrive,
+            this::velocityDriveNotCommand,
             new HolonomicPathFollowerConfig(new PIDConstants(10, 0, 0),
-                new PIDConstants(10, 0, 0),
+                new PIDConstants(4, 0, 0),
                 kSpeedAt12VoltsMps.in(MetersPerSecond),
                 kDriveRadius,
                 new ReplanningConfig()),
@@ -93,6 +93,9 @@ public class MecanumDriveSubsystem extends SubsystemBase {
             this); // Subsystem for requirements
         SB_TAB.add(this);
         SB_TAB.addDoubleArray("CTRE pose", () -> new double[]{m_odometry.getEstimatedPosition().getX(), m_odometry.getEstimatedPosition().getY(), m_odometry.getEstimatedPosition().getRotation().getRadians()});
+        SB_TAB.addString("Wheel Speeds", () -> getWheelSpeeds().toString());
+        SB_TAB.addString("Chassis Speeds", () -> getChassisSpeeds().toString());
+
     }
 
     public MecanumDriveWheelSpeeds getWheelSpeeds() {
@@ -137,14 +140,12 @@ public class MecanumDriveSubsystem extends SubsystemBase {
         }, () -> {});
     }
 
-    public Command velocityDrive(ChassisSpeeds speeds) {
+    public void velocityDriveNotCommand(ChassisSpeeds speeds) {
         MecanumDriveWheelSpeeds s = kinematics.toWheelSpeeds(speeds);
-        return runEnd(() -> {
-            m_frontLeft.setMps(s.frontLeftMetersPerSecond);
-            m_frontRight.setMps(s.frontRightMetersPerSecond);
-            m_rearLeft.setMps(s.rearLeftMetersPerSecond);
-            m_rearRight.setMps(s.rearRightMetersPerSecond);
-        }, () -> {});
+        m_frontLeft.setMps(s.frontLeftMetersPerSecond);
+        m_frontRight.setMps(s.frontRightMetersPerSecond);
+        m_rearLeft.setMps(s.rearLeftMetersPerSecond);
+        m_rearRight.setMps(s.rearRightMetersPerSecond);
     }
 
     public Command joystickDrive(DoubleSupplier x, DoubleSupplier y, DoubleSupplier rot) {
@@ -170,7 +171,6 @@ public class MecanumDriveSubsystem extends SubsystemBase {
             } else {
                 holdHeadingApplied.set(false);
             }
-
             ChassisSpeeds cs = ChassisSpeeds.fromFieldRelativeSpeeds(vx, vy, vr, m_odometry.getEstimatedPosition().getRotation());
             return cs;
         });
