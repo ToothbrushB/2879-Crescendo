@@ -42,7 +42,7 @@ public class RobotContainer {
     DriverStation.silenceJoystickConnectionWarning(true);
     // Configure the trigger bindings
     configureBindings();
-    NamedCommands.registerCommand("shoot", m_shooter.run());
+    NamedCommands.registerCommand("shoot", m_shooter.run().withTimeout(3));
     SB_TAB.add("Auto Chooser", autoChooser);
   }
 
